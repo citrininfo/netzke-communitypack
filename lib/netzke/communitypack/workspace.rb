@@ -42,10 +42,16 @@ module Netzke
         item = super
         i = get_item_index
         c = component_instance(item[:netzke_component])
+        
+        
+        
         { layout: :fit,
           title: c.config.title,
           closable: i > 0,
-          netzke_component_id: :"cmp#{i}",
+          #netzke_component_id: :"cmp#{i}",
+          dynamic_name: :"cmp#{i}",
+          #netzke_component_id: c.config.tab_id,
+          #item_id: c.config.tab_id, 
           items: i == 0 ? [item] : []
         }
       end
@@ -71,7 +77,7 @@ module Netzke
       # Overriding the deliver_component endpoint, to dynamically add tabs and replace components in existing tabs
       endpoint :deliver_component do |params, this|
         cmp_name = params[:name]
-        cmp_index = cmp_name.sub("cmp", "").to_i
+        cmp_index = params[:dynname].sub("cmp", "").to_i
 
         if params[:component].present?
           current_tabs = stored_tabs
@@ -80,9 +86,12 @@ module Netzke
           cmp_class = params[:component].constantize
           raise RuntimeError, "Could not find class #{params[:component]}" if cmp_class.nil?
 
-          cmp_config = {:name => params[:name], :klass => cmp_class}.merge(params[:config] || {}).symbolize_keys
+          cmp_config = {:name => params[:component].underscore, :klass => cmp_class}.merge(params[:config] || {}).symbolize_keys
+          #cmp_config[:item_id] = cmp_config[:tab_id]
           cmp_instance = cmp_class.new(cmp_config, self)
           new_tab_short_config = cmp_config.merge(:title => cmp_instance.config.title || cmp_instance.class.js_config.title) # here we set the title
+          #new_tab_short_config[:netzke_component_id] = new_tab_short_config[:tab_id]
+          new_tab_short_config[:dynamic_name] = params[:dynname]
 
           if stored_tabs.empty? || cmp_index > stored_tabs.last[:name].sub("cmp", "").to_i
             # add new tab to persistent storage
